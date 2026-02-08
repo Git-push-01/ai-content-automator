@@ -1,0 +1,9 @@
+productName,sku,price,category,description,inStock,rating
+"Wireless Keyboard Pro","KB-001",89.99,"Electronics","Ergonomic wireless keyboard with backlit keys and 30-hour battery life.",true,4.5
+"USB-C Hub 7-in-1","HUB-002",49.99,"Accessories","Multi-port adapter with HDMI, USB-A, SD card, and power delivery.",true,4.8
+"Noise Canceling Headphones","HP-003",199.99,"Audio","Premium over-ear headphones with active noise cancellation.",true,4.7
+"Mechanical Mouse","MS-004",59.99,"Electronics","High-precision gaming mouse with customizable RGB lighting.",false,4.3
+"4K Webcam","WC-005",129.99,"Electronics","Ultra HD webcam with auto-focus and built-in microphone.",true,4.6
+"Laptop Stand Adjustable","ST-006",39.99,"Accessories","Aluminum laptop stand with adjustable height and angle.",true,4.4
+"Portable Monitor 15.6","PM-007",249.99,"Electronics","Portable USB-C display for dual-screen productivity on the go.",true,4.5
+"Desk Organizer Set","DO-008",24.99,"Office","5-piece desk organization set with pen holder and cable management.",true,4.2

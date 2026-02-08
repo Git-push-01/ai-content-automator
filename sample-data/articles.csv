@@ -1,0 +1,9 @@
+title,slug,description,author,category,publishDate,featured
+"Getting Started with AI","getting-started-ai","Learn the basics of artificial intelligence and how it's transforming industries.","Sarah Johnson","Technology","2026-02-01",true
+"Design Systems 101","design-systems-101","A comprehensive guide to building and maintaining design systems at scale.","Mike Chen","Design","2026-02-03",false
+"Remote Work Best Practices","remote-work-tips","Tips and strategies for staying productive while working from home.","Emma Wilson","Productivity","2026-02-05",true
+"Introduction to TypeScript","intro-typescript","Why TypeScript is becoming the standard for large-scale JavaScript applications.","Alex Rivera","Development","2026-02-06",false
+"UX Research Methods","ux-research-methods","Essential research techniques every UX designer should know.","Lisa Park","Design","2026-02-07",true
+"Building APIs with Next.js","nextjs-api-routes","How to build robust APIs using Next.js API routes and server actions.","David Kim","Development","2026-02-08",false
+"Content Strategy Guide","content-strategy","Creating a content strategy that drives engagement and conversions.","Rachel Green","Marketing","2026-01-28",false
+"Accessibility Fundamentals","a11y-fundamentals","Making your web applications accessible to everyone.","Tom Anderson","Development","2026-01-30",true
