@@ -1,0 +1,9 @@
+name,role,email,department,bio,startDate,active
+"Sarah Johnson","Senior Developer","sarah.johnson@company.com","Engineering","Full-stack developer with 8 years of experience in React and Node.js.","2022-03-15",true
+"Mike Chen","Product Designer","mike.chen@company.com","Design","UX/UI designer passionate about creating intuitive user experiences.","2021-06-01",true
+"Emma Wilson","Project Manager","emma.wilson@company.com","Operations","PMP certified project manager with expertise in Agile methodologies.","2020-11-20",true
+"Alex Rivera","DevOps Engineer","alex.rivera@company.com","Engineering","Cloud infrastructure specialist focused on AWS and Kubernetes.","2023-01-10",true
+"Lisa Park","UX Researcher","lisa.park@company.com","Design","User researcher dedicated to understanding customer needs and behaviors.","2022-08-05",true
+"David Kim","Backend Developer","david.kim@company.com","Engineering","API architect specializing in microservices and database optimization.","2021-09-12",false
+"Rachel Green","Content Strategist","rachel.green@company.com","Marketing","Content creator and strategist with focus on SEO and engagement.","2023-04-01",true
+"Tom Anderson","QA Lead","tom.anderson@company.com","Engineering","Quality assurance expert ensuring reliable software delivery.","2020-05-18",true
