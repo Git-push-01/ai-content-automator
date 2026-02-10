@@ -35,7 +35,7 @@ export async function fetchEntries(contentType: string, limit = 100) {
   }));
 }
 
-// Fetch all content types
+// Fetch all content types with full field information
 export async function fetchContentTypes() {
   const client = getContentfulDeliveryClient();
   const contentTypes = await client.getContentTypes();
@@ -44,8 +44,35 @@ export async function fetchContentTypes() {
     id: ct.sys.id,
     name: ct.name,
     description: ct.description,
-    fieldCount: ct.fields.length,
+    fields: ct.fields.map((field) => ({
+      id: field.id,
+      name: field.name,
+      type: field.type,
+      required: field.required || false,
+      localized: field.localized || false,
+      validations: field.validations || [],
+    })),
   }));
+}
+
+// Fetch single content type by ID
+export async function fetchContentType(contentTypeId: string) {
+  const client = getContentfulDeliveryClient();
+  const contentType = await client.getContentType(contentTypeId);
+
+  return {
+    id: contentType.sys.id,
+    name: contentType.name,
+    description: contentType.description,
+    fields: contentType.fields.map((field) => ({
+      id: field.id,
+      name: field.name,
+      type: field.type,
+      required: field.required || false,
+      localized: field.localized || false,
+      validations: field.validations || [],
+    })),
+  };
 }
 
 // Fetch single entry by ID

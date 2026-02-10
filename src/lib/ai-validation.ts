@@ -7,6 +7,7 @@ import type {
   FieldMapping,
   ContentfulContentType,
 } from "@/types";
+import { getTokenBudgetTracker } from "./token-budget";
 
 export class AIValidationService {
   private openai: OpenAI;
@@ -123,12 +124,30 @@ Return a JSON array of mappings with this structure:
 Only include mappings where there's a reasonable match. Be conservative with confidence scores.
 Return ONLY the JSON array, no other text.`;
 
+      // Check token budget before making API call
+      const budgetTracker = getTokenBudgetTracker();
+      const budgetCheck = budgetTracker.canMakeCall(2500);
+      if (!budgetCheck.allowed) {
+        console.warn(`Token budget exceeded: ${budgetCheck.reason}`);
+        return this.fallbackFieldMapping(sourceHeaders, targetFields);
+      }
+
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.1,
         max_tokens: 2000,
       });
+
+      // Record token usage
+      if (response.usage) {
+        budgetTracker.recordUsage(
+          response.usage.prompt_tokens,
+          response.usage.completion_tokens,
+          "gpt-4o"
+        );
+        console.log(`📊 ${budgetTracker.getSummary()}`);
+      }
 
       const content = response.choices[0]?.message?.content?.trim();
       if (!content) {
@@ -259,6 +278,14 @@ Return ONLY the JSON array, no other text.`;
    */
   async suggestContentImprovements(content: string): Promise<string[]> {
     try {
+      // Check token budget before making API call
+      const budgetTracker = getTokenBudgetTracker();
+      const budgetCheck = budgetTracker.canMakeCall(1000);
+      if (!budgetCheck.allowed) {
+        console.warn(`Token budget exceeded: ${budgetCheck.reason}`);
+        return [];
+      }
+
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -272,6 +299,16 @@ Return ONLY the JSON array, no other text.`;
         temperature: 0.7,
         max_tokens: 500,
       });
+
+      // Record token usage
+      if (response.usage) {
+        budgetTracker.recordUsage(
+          response.usage.prompt_tokens,
+          response.usage.completion_tokens,
+          "gpt-4o"
+        );
+        console.log(`📊 ${budgetTracker.getSummary()}`);
+      }
 
       const result = response.choices[0]?.message?.content?.trim();
       if (result) {

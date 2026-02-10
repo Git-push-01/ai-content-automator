@@ -45,6 +45,7 @@ export function ContentImporter() {
   // Configuration
   const [locale, setLocale] = useState("en-US");
   const [publishImmediately, setPublishImmediately] = useState(false);
+  const [dryRun, setDryRun] = useState(true); // Demo mode - simulates import
 
   // Handle file upload
   const handleFileSelect = useCallback(
@@ -133,6 +134,37 @@ export function ContentImporter() {
     setProgress(85);
     setError(null);
 
+    // Dry run mode - simulate import for demo
+    if (dryRun) {
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate delay
+      
+      const simulatedResult: ImportResult = {
+        success: true,
+        totalProcessed: parsedFile.rows.length,
+        created: parsedFile.rows.length,
+        updated: 0,
+        failed: 0,
+        entries: parsedFile.rows.map((_, index) => ({
+          row: index + 1,
+          entryId: `simulated-${index + 1}`,
+          contentType: selectedContentType,
+          action: "created" as const,
+          status: publishImmediately ? "published" as const : "draft" as const,
+        })),
+        errors: [],
+      };
+
+      setImportResult(simulatedResult);
+      setProgress(100);
+      setStatus("complete");
+
+      toast({
+        title: "🎭 Demo Import Complete",
+        description: `Simulated creating ${simulatedResult.created} entries (dry run mode)`,
+      });
+      return;
+    }
+
     const config: ImportConfig = {
       contentTypeId: selectedContentType,
       locale,
@@ -160,7 +192,7 @@ export function ContentImporter() {
       setError(err instanceof Error ? err.message : "Import failed");
       setStatus("error");
     }
-  }, [parsedFile, selectedContentType, fieldMappings, locale, publishImmediately, toast]);
+  }, [parsedFile, selectedContentType, fieldMappings, locale, publishImmediately, dryRun, toast]);
 
   // Reset everything
   const handleReset = useCallback(() => {
@@ -333,6 +365,24 @@ export function ContentImporter() {
 
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="font-medium">🎭 Demo Mode (Dry Run)</p>
+                  <p className="text-sm text-muted-foreground">
+                    Simulate import without creating entries
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={dryRun}
+                    onChange={(e) => setDryRun(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="font-medium">Publish immediately</p>
                   <p className="text-sm text-muted-foreground">
                     Publish entries after creation
@@ -360,11 +410,12 @@ export function ContentImporter() {
               onClick={handleImport}
               disabled={fieldMappings.length === 0 || status === "importing"}
               className="flex-1"
+              variant={dryRun ? "secondary" : "default"}
             >
               {status === "importing" && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Import {parsedFile?.totalRows} Entries
+              {dryRun ? `🎭 Demo Import ${parsedFile?.totalRows} Entries` : `Import ${parsedFile?.totalRows} Entries`}
             </Button>
           </div>
         </>

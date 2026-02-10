@@ -2,6 +2,7 @@
 
 import { FileParserService } from "@/lib/file-parser";
 import { getContentfulService } from "@/lib/contentful";
+import { fetchContentTypes as fetchContentTypesDelivery, fetchContentType as fetchContentTypeDelivery } from "@/lib/contentful-delivery";
 import { createAIValidationService } from "@/lib/ai-validation";
 import type {
   ParsedFileResult,
@@ -43,7 +44,7 @@ export async function parseFile(formData: FormData): Promise<{
 }
 
 /**
- * Get content types from Contentful
+ * Get content types from Contentful (using Delivery API)
  */
 export async function getContentTypes(): Promise<{
   success: boolean;
@@ -51,9 +52,9 @@ export async function getContentTypes(): Promise<{
   error?: string;
 }> {
   try {
-    const contentful = getContentfulService();
-    const contentTypes = await contentful.getContentTypes();
-    return { success: true, data: contentTypes };
+    // Use Delivery API to fetch content types (doesn't require CMA token)
+    const contentTypes = await fetchContentTypesDelivery();
+    return { success: true, data: contentTypes as ContentfulContentType[] };
   } catch (error) {
     return {
       success: false,
@@ -74,15 +75,15 @@ export async function validateContent(
   error?: string;
 }> {
   try {
-    const contentful = getContentfulService();
-    const contentType = await contentful.getContentType(contentTypeId);
+    // Use Delivery API to fetch content type (doesn't require CMA token)
+    const contentType = await fetchContentTypeDelivery(contentTypeId);
 
     if (!contentType) {
       return { success: false, error: "Content type not found" };
     }
 
     const aiService = createAIValidationService();
-    const validation = await aiService.validateContent(parsedFile, contentType);
+    const validation = await aiService.validateContent(parsedFile, contentType as ContentfulContentType);
 
     return { success: true, data: validation };
   } catch (error) {

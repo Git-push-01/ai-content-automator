@@ -9,61 +9,63 @@ export class FileParserService {
   static async parseFile(file: File): Promise<ParsedFileResult> {
     const fileName = file.name.toLowerCase();
 
+    // Read file as array buffer first (works in both browser and Node.js)
+    const arrayBuffer = await file.arrayBuffer();
+
     if (fileName.endsWith(".csv")) {
-      return this.parseCSV(file);
+      return this.parseCSV(arrayBuffer, file.name);
     } else if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
-      return this.parseExcel(file);
+      return this.parseExcel(arrayBuffer, file.name);
     } else {
       throw new Error("Unsupported file format. Please upload a CSV or Excel file.");
     }
   }
 
   /**
-   * Parse CSV file
+   * Parse CSV file from array buffer
    */
-  private static async parseCSV(file: File): Promise<ParsedFileResult> {
-    return new Promise((resolve, reject) => {
-      const errors: string[] = [];
+  private static async parseCSV(arrayBuffer: ArrayBuffer, fileName: string): Promise<ParsedFileResult> {
+    const errors: string[] = [];
+    
+    // Convert ArrayBuffer to string
+    const decoder = new TextDecoder("utf-8");
+    const csvText = decoder.decode(arrayBuffer);
 
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header: string) => header.trim(),
-        complete: (results) => {
-          const headers = results.meta.fields || [];
-          const rows = results.data as ContentRow[];
-
-          // Collect parsing errors
-          if (results.errors.length > 0) {
-            results.errors.forEach((err) => {
-              errors.push(`Row ${err.row}: ${err.message}`);
-            });
-          }
-
-          resolve({
-            headers,
-            rows: this.cleanRows(rows, headers),
-            fileName: file.name,
-            totalRows: rows.length,
-            errors,
-          });
-        },
-        error: (error) => {
-          reject(new Error(`Failed to parse CSV: ${error.message}`));
-        },
-      });
+    // Parse CSV synchronously (papaparse supports this for strings)
+    const results = Papa.parse<ContentRow>(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header: string) => header.trim(),
     });
+
+    const headers = results.meta.fields || [];
+    const rows = results.data;
+
+    // Collect parsing errors
+    if (results.errors.length > 0) {
+      results.errors.forEach((err) => {
+        errors.push(`Row ${err.row}: ${err.message}`);
+      });
+    }
+
+    return {
+      headers,
+      rows: this.cleanRows(rows, headers),
+      fileName,
+      totalRows: rows.length,
+      errors,
+    };
   }
 
   /**
-   * Parse Excel file
+   * Parse Excel file from array buffer
    */
-  private static async parseExcel(file: File): Promise<ParsedFileResult> {
+  private static async parseExcel(arrayBuffer: ArrayBuffer, fileName: string): Promise<ParsedFileResult> {
     const errors: string[] = [];
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const workbook = XLSX.read(uint8Array, { type: "array" });
 
       // Use the first sheet
       const firstSheetName = workbook.SheetNames[0];
@@ -99,7 +101,7 @@ export class FileParserService {
       return {
         headers,
         rows: this.cleanRows(rows, headers),
-        fileName: file.name,
+        fileName,
         totalRows: rows.length,
         errors,
       };
