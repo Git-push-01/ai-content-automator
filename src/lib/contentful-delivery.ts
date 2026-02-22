@@ -44,6 +44,7 @@ export async function fetchContentTypes() {
     id: ct.sys.id,
     name: ct.name,
     description: ct.description,
+    fieldCount: ct.fields.length,
     fields: ct.fields.map((field) => ({
       id: field.id,
       name: field.name,
@@ -51,6 +52,8 @@ export async function fetchContentTypes() {
       required: field.required || false,
       localized: field.localized || false,
       validations: field.validations || [],
+      linkType: field.type === "Link" ? (field as any).linkType : undefined,
+      items: field.type === "Array" ? (field as any).items : undefined,
     })),
   }));
 }
@@ -71,6 +74,8 @@ export async function fetchContentType(contentTypeId: string) {
       required: field.required || false,
       localized: field.localized || false,
       validations: field.validations || [],
+      linkType: field.type === "Link" ? (field as any).linkType : undefined,
+      items: field.type === "Array" ? (field as any).items : undefined,
     })),
   };
 }

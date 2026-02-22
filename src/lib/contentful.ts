@@ -9,6 +9,21 @@ import type {
   ContentRow,
   FieldMapping,
 } from "@/types";
+import {
+  toEntryLink,
+  toAssetLink,
+  toEntryLinks,
+  toAssetLinks,
+  markdownToRichText,
+  toJsonObject,
+  toLocation,
+  toBoolean,
+  toNumber,
+  toInteger,
+  isLookup,
+  parseLookup,
+  isUrl,
+} from "./value-transforms";
 
 export class ContentfulService {
   private client;
@@ -51,6 +66,8 @@ export class ContentfulService {
           required: field.required || false,
           localized: field.localized || false,
           validations: field.validations,
+          linkType: field.type === "Link" ? (field as any).linkType : undefined,
+          items: field.type === "Array" ? (field as any).items : undefined,
         })),
       }));
     } catch (error) {
@@ -80,6 +97,8 @@ export class ContentfulService {
           required: field.required || false,
           localized: field.localized || false,
           validations: field.validations,
+          linkType: field.type === "Link" ? (field as any).linkType : undefined,
+          items: field.type === "Array" ? (field as any).items : undefined,
         })),
       };
     } catch (error) {
@@ -108,12 +127,33 @@ export class ContentfulService {
       const space = await this.client.getSpace(this.spaceId);
       const environment = await space.getEnvironment(this.environmentId);
 
+      // Fetch content type fields for type-aware transforms
+      let contentTypeFields: ContentfulField[] | undefined;
+      try {
+        const ct = await environment.getContentType(config.contentTypeId);
+        contentTypeFields = ct.fields.map((field: any) => ({
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          required: field.required || false,
+          localized: field.localized || false,
+          validations: field.validations,
+          linkType: field.type === "Link" ? field.linkType : undefined,
+          items: field.type === "Array" ? field.items : undefined,
+        }));
+      } catch {
+        // Continue without field definitions — basic transforms only
+      }
+
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const rowNumber = i + 2; // Account for header row and 0-indexing
 
         try {
-          const fields = this.mapRowToFields(row, config);
+          const fields = this.mapRowToFields(row, config, contentTypeFields);
+
+          // Resolve any lookup references (e.g. "lookup:slug:my-article")
+          await this.resolveLookupsInFields(fields, environment);
           
           // Create entry
           const entry = await environment.createEntry(config.contentTypeId, {
@@ -161,7 +201,8 @@ export class ContentfulService {
    */
   private mapRowToFields(
     row: ContentRow,
-    config: ImportConfig
+    config: ImportConfig,
+    contentTypeFields?: ContentfulField[]
   ): Record<string, any> {
     const fields: Record<string, any> = {};
     const locale = config.locale || "en-US";
@@ -170,8 +211,12 @@ export class ContentfulService {
       const sourceValue = row[mapping.sourceField];
       
       if (sourceValue !== null && sourceValue !== undefined) {
+        // Find the target field definition for type-aware transforms
+        const fieldDef = contentTypeFields?.find(
+          (f) => f.id === mapping.targetField
+        );
         fields[mapping.targetField] = {
-          [locale]: this.transformValue(sourceValue, mapping),
+          [locale]: this.transformValue(sourceValue, mapping, fieldDef),
         };
       }
     }
@@ -189,14 +234,120 @@ export class ContentfulService {
   }
 
   /**
-   * Transform value based on mapping configuration
+   * Transform value based on the target Contentful field type.
+   *
+   * Supports: Symbol, Text, Integer, Number, Boolean, Date,
+   * Link (Entry/Asset), Array (of Links), RichText, Object, Location.
    */
-  private transformValue(value: any, mapping: FieldMapping): any {
-    // Basic transformations
-    if (typeof value === "string") {
-      return value.trim();
+  private transformValue(
+    value: any,
+    mapping: FieldMapping,
+    fieldDef?: ContentfulField
+  ): any {
+    const strValue = typeof value === "string" ? value.trim() : String(value);
+
+    // If we don't know the field type, do basic transforms
+    if (!fieldDef) {
+      return typeof value === "string" ? value.trim() : value;
     }
-    return value;
+
+    switch (fieldDef.type) {
+      // ── Scalars ──────────────────────────────────────────────
+      case "Symbol":
+      case "Text":
+        return strValue;
+
+      case "Integer":
+        return toInteger(value);
+
+      case "Number":
+        return toNumber(value);
+
+      case "Boolean":
+        return toBoolean(value);
+
+      case "Date":
+        // Pass through – Contentful accepts ISO-8601 strings
+        return strValue;
+
+      // ── Reference (Link to Entry or Asset) ──────────────────
+      case "Link": {
+        if (fieldDef.linkType === "Asset") {
+          // If it looks like a URL, treat as asset ID for now
+          // (full URL upload would require async asset creation)
+          return toAssetLink(strValue);
+        }
+        // Entry link
+        if (isLookup(strValue)) {
+          // Lookup references are resolved during import (see resolveLookupsInRow)
+          const lookup = parseLookup(strValue);
+          // Store as a marker; resolved before entry creation
+          return { __lookup: true, ...lookup, linkType: "Entry" };
+        }
+        return toEntryLink(strValue);
+      }
+
+      // ── Array (of Links, Symbols, etc.) ─────────────────────
+      case "Array": {
+        const itemsType = fieldDef.items?.type;
+        const itemsLinkType = fieldDef.items?.linkType;
+
+        if (itemsType === "Link" && itemsLinkType === "Asset") {
+          return toAssetLinks(strValue);
+        }
+        if (itemsType === "Link") {
+          return toEntryLinks(strValue);
+        }
+        // Array of Symbols (tags, etc.)
+        return strValue
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+      }
+
+      // ── Rich Text ───────────────────────────────────────────
+      case "RichText":
+        return markdownToRichText(strValue);
+
+      // ── JSON Object ─────────────────────────────────────────
+      case "Object":
+        return toJsonObject(strValue);
+
+      // ── Location ────────────────────────────────────────────
+      case "Location":
+        return toLocation(strValue);
+
+      // ── Fallback ────────────────────────────────────────────
+      default:
+        return typeof value === "string" ? value.trim() : value;
+    }
+  }
+
+  /**
+   * Resolve any lookup references in a fields object by querying Contentful.
+   * Replaces { __lookup: true, field, value, linkType } markers with real Link objects.
+   */
+  private async resolveLookupsInFields(
+    fields: Record<string, any>,
+    environment: any
+  ): Promise<void> {
+    for (const [fieldId, localeMap] of Object.entries(fields)) {
+      for (const [locale, val] of Object.entries(localeMap as Record<string, any>)) {
+        if (val && typeof val === "object" && val.__lookup) {
+          const entries = await environment.getEntries({
+            [`fields.${val.field}`]: val.value,
+            limit: 1,
+          });
+          if (entries.items.length > 0) {
+            (fields[fieldId] as any)[locale] = toEntryLink(entries.items[0].sys.id);
+          } else {
+            throw new Error(
+              `Lookup failed: no entry found where ${val.field} = "${val.value}"`
+            );
+          }
+        }
+      }
+    }
   }
 
   /**

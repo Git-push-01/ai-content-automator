@@ -90,6 +90,31 @@ Content teams frequently maintain data in spreadsheets (Excel or CSV) — articl
 | **Content Viewer** | A dedicated `/content` page fetches all published entries from Contentful (via the Delivery API) and displays them in a browsable UI. |
 | **Token Budget Tracker** | Built-in guardrails that cap OpenAI token usage and estimated cost per session, configurable via environment variables. |
 | **Locale Support** | Pick a locale before importing; defaults to `en-US`. |
+| **Complex Field Types** | Full support for References, Rich Text (Markdown → Contentful JSON), JSON Objects, Locations, Arrays, and Asset links — not just flat scalar fields. |
+| **Lookup References** | Reference fields can use `lookup:slug:my-article` syntax to resolve entry IDs by any field at import time. |
+| **Type-Aware Transforms** | Values are automatically coerced to the correct type — booleans, numbers, integers, dates, locations, and more. |
+
+---
+
+## Supported Field Types
+
+The importer handles **every Contentful field type**, not just simple text and numbers. Here's what you can put in each spreadsheet cell:
+
+| Contentful Field Type | Cell Format | Example | What Happens |
+|---|---|---|---|
+| **Short Text / Long Text** | Plain string | `Hello world` | Passed through as-is |
+| **Integer** | Whole number | `42` | Coerced to `number`, validated as integer |
+| **Decimal / Number** | Number | `19.99` | Coerced to `number` |
+| **Boolean** | true/false/yes/no/1/0/y/n | `true` | Coerced to real `boolean` |
+| **Date** | ISO-8601 string | `2026-02-22` | Passed through |
+| **Reference (Entry)** | Entry ID | `5xK9mEntry123` | Wrapped as `{ sys: { type: "Link", linkType: "Entry", id: "..." } }` |
+| **Reference (lookup)** | `lookup:<field>:<value>` | `lookup:slug:my-article` | Queries Contentful at import time, resolves to the matching entry's Link object |
+| **Reference (Asset)** | Asset ID | `asset123` | Wrapped as `{ sys: { type: "Link", linkType: "Asset", id: "..." } }` |
+| **Multi-reference** | Comma-separated IDs | `id1, id2, id3` | Split into an array of Link objects |
+| **Array of Symbols** | Comma-separated strings | `tag1, tag2, tag3` | Split into `["tag1", "tag2", "tag3"]` |
+| **Rich Text** | Markdown | `# Title\n\nSome **bold** text` | Converted to Contentful's rich text document JSON (headings, paragraphs, bold, italic, links, lists, blockquotes) |
+| **JSON Object** | Raw JSON string | `{"color": "red"}` | Parsed with `JSON.parse`, validated as an object |
+| **Location** | `lat,lon` | `40.7128,-74.0060` | Parsed into `{ lat, lon }` with range validation |
 
 ---
 
@@ -142,6 +167,7 @@ ai-content-automator/
 │   │   ├── ai-validation.ts        # AIValidationService — GPT-4o field mapping + row validation
 │   │   ├── contentful.ts           # ContentfulService — Management API (create/publish entries)
 │   │   ├── contentful-delivery.ts  # Delivery API helpers (read content types & entries)
+│   │   ├── value-transforms.ts     # Type converters (Rich Text, References, JSON, Location, etc.)
 │   │   ├── token-budget.ts         # TokenBudgetTracker — caps token usage and cost
 │   │   └── utils.ts                # General utility functions (cn, etc.)
 │   └── types/

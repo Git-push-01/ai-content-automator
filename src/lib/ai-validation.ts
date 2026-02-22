@@ -235,6 +235,8 @@ Return ONLY the JSON array, no other text.`;
 
     // Type validation
     if (value !== null && value !== undefined && value !== "") {
+      const strValue = String(value).trim();
+
       switch (field.type) {
         case "Integer":
           if (!Number.isInteger(Number(value))) {
@@ -258,15 +260,72 @@ Return ONLY the JSON array, no other text.`;
           break;
         case "Boolean":
           const boolStr = String(value).toLowerCase();
-          if (!["true", "false", "yes", "no", "1", "0"].includes(boolStr)) {
+          if (!["true", "false", "yes", "no", "1", "0", "y", "n"].includes(boolStr)) {
             errors.push({
               row: rowNumber,
               field: sourceField,
-              message: `"${field.name}" should be a boolean value`,
+              message: `"${field.name}" should be a boolean value (true/false, yes/no, 1/0)`,
               value,
             });
           }
           break;
+        case "Link":
+          // Must be a non-empty string (entry/asset ID or lookup:field:value)
+          if (!strValue) {
+            errors.push({
+              row: rowNumber,
+              field: sourceField,
+              message: `"${field.name}" requires an entry/asset ID or lookup reference (e.g. "lookup:slug:my-article")`,
+              value,
+            });
+          }
+          break;
+        case "Array":
+          // Comma-separated values — just check it's not empty
+          if (!strValue) {
+            errors.push({
+              row: rowNumber,
+              field: sourceField,
+              message: `"${field.name}" should be a comma-separated list of values`,
+              value,
+            });
+          }
+          break;
+        case "RichText":
+          // Any non-empty string is valid Markdown
+          break;
+        case "Object":
+          try {
+            const parsed = JSON.parse(strValue);
+            if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+              errors.push({
+                row: rowNumber,
+                field: sourceField,
+                message: `"${field.name}" should be a JSON object (e.g. {"key": "value"})`,
+                value,
+              });
+            }
+          } catch {
+            errors.push({
+              row: rowNumber,
+              field: sourceField,
+              message: `"${field.name}" contains invalid JSON`,
+              value,
+            });
+          }
+          break;
+        case "Location": {
+          const parts = strValue.split(",");
+          if (parts.length !== 2 || isNaN(parseFloat(parts[0])) || isNaN(parseFloat(parts[1]))) {
+            errors.push({
+              row: rowNumber,
+              field: sourceField,
+              message: `"${field.name}" should be in "lat,lon" format (e.g. "40.7128,-74.0060")`,
+              value,
+            });
+          }
+          break;
+        }
       }
     }
 

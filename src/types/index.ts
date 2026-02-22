@@ -91,6 +91,14 @@ export interface ContentfulField {
   required: boolean;
   localized: boolean;
   validations?: any[];
+  /** For Link fields: "Entry" or "Asset" */
+  linkType?: string;
+  /** For Array fields: describes the items (e.g. Array of Links) */
+  items?: {
+    type: string;
+    linkType?: string;
+    validations?: any[];
+  };
 }
 
 // Import configuration
